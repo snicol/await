@@ -14,6 +14,8 @@ func TestCtxErrorGroupPanic(t *testing.T) {
 
 	g.Go(func(ctx context.Context) error {
 		panic("something went wrong")
+
+		return nil
 	})
 
 	err := g.Wait()
