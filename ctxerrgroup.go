@@ -2,6 +2,7 @@ package await
 
 import (
 	"context"
+	"fmt"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -41,12 +42,31 @@ func WithLimit(limit int) Option {
 	}
 }
 
+// PanicError wraps a recovered panic and is returned if a goroutine panics.
+type PanicError struct {
+	Panic any
+}
+
+var _ error = PanicError{}
+
+// Error conforms to the error interface.
+func (pe PanicError) Error() string {
+	return fmt.Sprintf("goroutine panicked: %s", pe.Panic)
+}
+
 // Go adds a call to the errgroup, which passes the context provided to Group
 // into fn. Any error returned from the function provided will stop execution
 // for the entire group.
 func (ceg ctxErrgroup) Go(fn func(ctx context.Context) error) {
-	ceg.g.Go(func() error {
-		return fn(ceg.ctx)
+	ceg.g.Go(func() (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = PanicError{Panic: r}
+			}
+		}()
+
+		err = fn(ceg.ctx)
+		return err
 	})
 }
 
