@@ -9,7 +9,7 @@ import (
 // every item, collecting the return values of each execution into a new slice.
 // The returned slice has the same length and ordering as the input: result i
 // corresponds to input i.
-// If any error is encountered, the group's context is cancelled and execution
+// If any error is encountered, the group's context is canceled and execution
 // stops.
 // The returned slice should not be accessed until the group's Wait has
 // returned.
@@ -36,7 +36,7 @@ func SliceReturn[T, O any](g ctxErrgroup, vs []T, fn func(context.Context, T) (O
 // item. `fn` returns a (possibly new) key, a value, and an error; the returned
 // key/value pair is collected into a new output map. This lets you transform
 // both the keys and the values of a map concurrently.
-// If any error is encountered, the group's context is cancelled and execution
+// If any error is encountered, the group's context is canceled and execution
 // stops.
 // Writes back to the output map are guarded by a mutex because Go maps are not
 // safe for concurrent writes. If `fn` returns the same key for two different

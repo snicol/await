@@ -7,7 +7,7 @@ import (
 
 // SliceReplace takes a slice of any input, and asynchronously calls `fn` over
 // every item, replacing the value in the slice with the one returned by `fn`.
-// If any error is encountered, the group's context is cancelled and execution
+// If any error is encountered, the group's context is canceled and execution
 // stops.
 // This function is useful if you wish to modify the values of the slice as a
 // result of an asynchronous call. Each goroutine writes to a distinct index, so
@@ -30,7 +30,7 @@ func SliceReplace[T any](g ctxErrgroup, vs []T, fn func(context.Context, T) (T, 
 
 // MapReplace takes a map of any input, and asynchronously calls `fn` over
 // every item, replacing the value in the map with the one returned by `fn`.
-// If any error is encountered, the group's context is cancelled and execution
+// If any error is encountered, the group's context is canceled and execution
 // stops.
 // This function is useful if you wish to modify the values of the map as a
 // result of an asynchronous call. Writes back to the map are guarded by a mutex
