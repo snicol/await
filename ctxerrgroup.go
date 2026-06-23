@@ -1,3 +1,12 @@
+// Package await provides small, generic helpers for fanning work out across
+// goroutines on top of golang.org/x/sync/errgroup. It adds three things on top
+// of a plain errgroup: Go-generics helpers for running a function over a single
+// value, a slice, or a map; helpers that collect or replace results without you
+// having to manage synchronization; and automatic recovery of panics in worker
+// goroutines (surfaced as a PanicError instead of crashing the process).
+//
+// All helpers share the group's context, so the first non-nil error (or panic)
+// cancels that context and Wait returns it.
 package await
 
 import (
@@ -7,8 +16,10 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// ctxErrgroup is a wrapper around errgroup. It manages passing in context
-// to avoid issues when not using the errgroup's returned context.
+// ctxErrgroup is a wrapper around errgroup.Group. It carries the context
+// returned by errgroup.WithContext alongside the group itself so callers do
+// not accidentally use a different (uncancelled) context inside their workers,
+// a common source of bugs when using errgroup directly.
 type ctxErrgroup struct {
 	ctx context.Context
 	g   *errgroup.Group
@@ -34,15 +45,19 @@ func Group(ctx context.Context, options ...Option) ctxErrgroup {
 	return ceg
 }
 
-// WithLimit sets the maximum amount of goroutines running in the errgroup at
-// any point in time.
+// WithLimit sets the maximum number of goroutines that may run concurrently in
+// the group at any point in time. A non-positive limit means no limit. See
+// errgroup.Group.SetLimit for the underlying semantics.
 func WithLimit(limit int) Option {
 	return func(ceg ctxErrgroup) {
 		ceg.g.SetLimit(limit)
 	}
 }
 
-// PanicError wraps a recovered panic and is returned if a goroutine panics.
+// PanicError wraps a value recovered from a panicking worker goroutine. When a
+// function passed to Go panics, await recovers it and returns it as a
+// PanicError from Wait rather than letting the panic crash the process. The
+// original recovered value is available via the Panic field.
 type PanicError struct {
 	Panic any
 }
@@ -54,9 +69,10 @@ func (pe PanicError) Error() string {
 	return fmt.Sprintf("goroutine panicked: %s", pe.Panic)
 }
 
-// Go adds a call to the errgroup, which passes the context provided to Group
-// into fn. Any error returned from the function provided will stop execution
-// for the entire group.
+// Go adds a call to the group, passing the group's context into fn. Any error
+// returned from fn cancels the group's context and stops execution for the
+// entire group. If fn panics, the panic is recovered and returned from Wait as
+// a PanicError so a single bad worker cannot take down the whole process.
 func (ceg ctxErrgroup) Go(fn func(ctx context.Context) error) {
 	ceg.g.Go(func() (err error) {
 		defer func() {
